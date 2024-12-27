@@ -96,15 +96,19 @@ namespace custom_case_sensitive_combo_box_from_scratch
         private readonly DropDownContainer _dropDownContainer = new();
         private Dictionary<string, object> Templates { get; } = new ();
         private string? _caseSensitiveText = null;
-        private int _caseSensitiveIndex = -1;
+
+        /// <summary>
+        /// This property tracks separately from that of _dropDownCaontainer.
+        /// </summary>
         public int SelectedIndex
         {
             get => _selectedIndex;
             set
             {
-                if (!Equals(_selectedIndex, value))
+                if (!Equals(_dropDownContainer.SelectedIndex, value))
                 {
                     _selectedIndex = value;
+                    _dropDownContainer.SelectedIndex = value;
                     OnPropertyChanged();
                     _richTextBox.Text =
                         value == -1
@@ -117,17 +121,18 @@ namespace custom_case_sensitive_combo_box_from_scratch
         protected override void OnTextChanged(EventArgs e)
         {
             var aspirant =
-                Items
+                _dropDownContainer.Selectables
                 .OfType<object>()
                 .FirstOrDefault(_ =>
                     (_?.ToString() ?? string.Empty)
-                    .IndexOf(Text) == 0, StringComparison.Ordinal);
+                    .IndexOf(Text) == 0, StringComparison.Ordinal)
+                as ISelectable;
             Debug.Write($"{aspirant}");
             if (aspirant != null)
             {
-                _caseSensitiveIndex = Items.IndexOf(aspirant);
+                _dropDownContainer.SelectedIndex = _dropDownContainer.Selectables.IndexOf(aspirant);
                 _caseSensitiveText = aspirant.ToString();
-                Debug.WriteLine($" {_caseSensitiveIndex}");
+                Debug.WriteLine($" {_dropDownContainer.SelectedIndex}");
             }
             base.OnTextChanged(e);
         }
@@ -167,7 +172,7 @@ namespace custom_case_sensitive_combo_box_from_scratch
                     OnPropertyChanged();
                     if (value && !_dropDownContainer.Visible)
                     {
-                        OnDroppedDown(EventArgs.Empty);
+                        DropDown?.Invoke(this, EventArgs.Empty);
                         _dropDownContainer.Show(this);
                     }
                     else _dropDownContainer.Hide();
@@ -177,25 +182,6 @@ namespace custom_case_sensitive_combo_box_from_scratch
         bool _droppedDown = default;
 
         public event EventHandler? DropDown;
-
-        protected virtual void OnDroppedDown(EventArgs e)
-        {
-            DropDown?.Invoke(this, e);
-            RefreshSelection();
-        }
-
-        private void RefreshSelection()
-        {
-            int index = 0;
-            foreach (var item in Templates.Values)
-            {
-                if (item is ISelectable selectable)
-                {
-                    selectable.IsSelected = index == SelectedIndex;
-                }
-                index++;
-            }
-        }
 
         protected override void OnSizeChanged(EventArgs e)
         {
@@ -220,7 +206,7 @@ namespace custom_case_sensitive_combo_box_from_scratch
                 Multiline = false;
                 Anchor = AnchorStyles.Left | AnchorStyles.Right;
                 BorderStyle = BorderStyle.None;
-                Text = "Placeholder";
+                Text = PlaceholderText;
                 _isPlaceholderText = true;
                 LostFocus += Commit;
                 KeyDown += Commit;
@@ -242,7 +228,7 @@ namespace custom_case_sensitive_combo_box_from_scratch
                 }
                 if (string.IsNullOrWhiteSpace(Text))
                 {
-                    Text = "Placeholder";
+                    Text = PlaceholderText;
                     _isPlaceholderText = true;
                 }
                 BeginInvoke(() => SelectAll());
@@ -266,6 +252,8 @@ namespace custom_case_sensitive_combo_box_from_scratch
                 }
             }
             bool _isPlaceholderText = true;
+
+            public string PlaceholderText { get; set; } = "Select";
         }
 
         class DropDownIcon : Label
@@ -375,7 +363,43 @@ namespace custom_case_sensitive_combo_box_from_scratch
                     }
                 };
             }
-            BindingList<ISelectable> Selectables { get; } = new();
+            internal BindingList<ISelectable> Selectables { get; } = new();
+            protected override void OnVisibleChanged(EventArgs e)
+            {
+                base.OnVisibleChanged(e);
+                if (Visible)
+                {
+                    RefreshSelection();
+                }
+            }
+
+            private void RefreshSelection()
+            {
+                int index = 0;
+                foreach (var item in Selectables)
+                {
+                    if (item is ISelectable selectable)
+                    {
+                        selectable.IsSelected = index == SelectedIndex;
+                    }
+                    index++;
+                }
+            }
+
+            public int SelectedIndex
+            {
+                get => _selectedIndex;
+                set
+                {
+                    if (!Equals(_selectedIndex, value))
+                    {
+                        _selectedIndex = value;
+                        RefreshSelection();
+                    }
+                }
+            }
+            int _selectedIndex = -1;
+
             public event EventHandler<ItemClickedEventArgs>? ItemClicked;
         }
         [DesignerSerializationVisibility(DesignerSerializationVisibility.Content)]
