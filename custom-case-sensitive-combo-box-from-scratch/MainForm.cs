@@ -101,15 +101,7 @@ namespace custom_case_sensitive_combo_box_from_scratch
                                     Font = Font,
                                     Height = Height,
                                 };
-                                if(Templates.ContainsKey(text))
-                                {
-                                    throw new InvalidOperationException($"Key '{text}' already exists.");
-                                }
-                                else
-                                {
-                                    Templates[text] = view;
-                                }
-                                _dropDownContainer.Add(view);
+                                _dropDownContainer.Selectables.Add(view);
                                 break;
                         }
                     }
@@ -121,7 +113,6 @@ namespace custom_case_sensitive_combo_box_from_scratch
         private readonly RichTextBoxEx _richTextBox = new();
         private readonly DropDownIcon _dropDownIcon = new();
         private readonly DropDownContainer _dropDownContainer = new();
-        private Dictionary<string, object> Templates { get; } = new ();
         private string? _caseSensitiveText = null;
 
         /// <summary>
@@ -310,10 +301,40 @@ namespace custom_case_sensitive_combo_box_from_scratch
                         Controls.Clear();
                         break;
                     case ListChangedType.ItemAdded:
-                        if(Selectables[e.NewIndex] is Control control)
+                        if (Selectables[e.NewIndex] is Control control)
                         {
+                            control.BackColor = Color.White;
+                            control.Margin = new Padding(0, 1, 0, 0);
+                            using (var graphics = control.CreateGraphics())
+                            {
+                                var sizeF = graphics.MeasureString(control.Text, control.Font);
+                                control.Width = Convert.ToInt32(sizeF.Width);
+                            }
+                            control.Anchor = AnchorStyles.Left | AnchorStyles.Right;
+                            switch (control.Width.CompareTo(_flowLayoutPanel.Width))
+                            {
+                                case -1:
+                                    control.Width = _flowLayoutPanel.Width;
+                                    break;
+                                case 1:
+                                    _flowLayoutPanel.Width = control.Width;
+                                    break;
+                            }
+                            control.Click += (sender, e) =>
+                            {
+                                switch (sender)
+                                {
+                                    case Label label:
+                                        ItemClicked?.Invoke(this, new ItemClickedEventArgs(label.Text));
+                                        break;
+                                    default:
+                                        ItemClicked?.Invoke(this, new ItemClickedEventArgs(sender?.ToString()));
+                                        break;
+                                }
+                            };
                             _flowLayoutPanel.Controls.Add(control);
                         }
+                        Height = Selectables.OfType<Control>().Sum(_ => _.Height);
                         break;
                 }
             }
@@ -330,6 +351,7 @@ namespace custom_case_sensitive_combo_box_from_scratch
                 base.OnMinimumSizeChanged(e);
                 _flowLayoutPanel.MinimumSize = MinimumSize;
             }
+#if false
             internal void Add<T>(T control) where T: Control, ISelectable
             {
                 control.BackColor = Color.White;
@@ -364,6 +386,7 @@ namespace custom_case_sensitive_combo_box_from_scratch
                     }
                 };
             }
+#endif
             internal BindingList<ISelectable> Selectables { get; } = new();
             protected override void OnVisibleChanged(EventArgs e)
             {
