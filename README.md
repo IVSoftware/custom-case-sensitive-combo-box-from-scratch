@@ -152,6 +152,67 @@ class DefaultView : Label, ISelectable
     bool _isSelected = default;
 }
 ~~~
+___
+
+**Text entry**
+
+Changes in the text entry control are tracked and used to update the selection index of the internal list, which is maintained separately from the separate from the `SelectedIndex` property of the main control.
+
+~~~
+class RichTextBoxEx : RichTextBox
+{
+    public RichTextBoxEx()
+    {
+        Multiline = false;
+        Anchor = AnchorStyles.Left | AnchorStyles.Right;
+        BorderStyle = BorderStyle.None;
+        Text = PlaceholderText;
+        IsPlaceholderText = true;
+        LostFocus += Commit;
+        KeyDown += Commit;
+        BackColor = DesignMode ? Color.LightGray : Color.White;
+    }
+    private void Commit(object? sender, EventArgs e)
+    {
+        if(e is KeyEventArgs eKey)
+        {
+            if (eKey.KeyData == Keys.Enter)
+            {
+                eKey.SuppressKeyPress = true;
+            }
+            else
+            {
+                return;
+            }
+        }
+        if (string.IsNullOrWhiteSpace(Text))
+        {
+            Text = PlaceholderText;
+            IsPlaceholderText = true;
+        }
+        BeginInvoke(() => SelectAll());
+    }
+    protected override void OnFontChanged(EventArgs e)
+    {
+        base.OnFontChanged(e);
+        using (var graphics = CreateGraphics())
+        {
+            Height = Convert.ToInt16(graphics.MeasureString("AZ", Font).Height);
+        }
+    }
+    protected override void OnMouseDown(MouseEventArgs e)
+    {
+        base.OnMouseDown(e);
+        if(IsPlaceholderText)
+        {
+            Text = string.Empty;
+            IsPlaceholderText = false;
+        }
+    }
+    public bool IsPlaceholderText { get; private set; } = true;
+    public string PlaceholderText { get; set; } = "Select";
+}
+~~~
 
 ___
 
