@@ -351,42 +351,6 @@ namespace custom_case_sensitive_combo_box_from_scratch
                 base.OnMinimumSizeChanged(e);
                 _flowLayoutPanel.MinimumSize = MinimumSize;
             }
-#if false
-            internal void Add<T>(T control) where T: Control, ISelectable
-            {
-                control.BackColor = Color.White;
-                control.Margin = new Padding(0,1,0,0);
-                using (var graphics = control.CreateGraphics())
-                {
-                    var sizeF = graphics.MeasureString(control.Text, control.Font);
-                    control.Width = Convert.ToInt32(sizeF.Width);
-                }
-                control.Anchor = AnchorStyles.Left | AnchorStyles.Right;
-                switch (control.Width.CompareTo(_flowLayoutPanel.Width))
-                {
-                    case -1:
-                        control.Width = _flowLayoutPanel.Width;
-                        break;
-                    case 1:
-                        _flowLayoutPanel.Width = control.Width;
-                        break;
-                }
-                Selectables.Add(control);
-                Height = _flowLayoutPanel.Controls.OfType<Control>().Sum(_=>_.Height);
-                control.Click += (sender, e) =>
-                {
-                    switch (sender)
-                    {
-                        case Label label:
-                            ItemClicked?.Invoke(this, new ItemClickedEventArgs(label.Text));
-                            break;
-                        default:
-                            ItemClicked?.Invoke(this, new ItemClickedEventArgs(sender?.ToString()));
-                            break;
-                    }
-                };
-            }
-#endif
             internal BindingList<ISelectable> Selectables { get; } = new();
             protected override void OnVisibleChanged(EventArgs e)
             {
