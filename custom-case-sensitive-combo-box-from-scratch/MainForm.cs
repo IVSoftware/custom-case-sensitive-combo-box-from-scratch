@@ -51,9 +51,11 @@ namespace custom_case_sensitive_combo_box_from_scratch
             }
         }
 
-        private readonly RichTextBox _richTextBox = new();
+        private readonly RichTextBoxEx _richTextBox = new();
         private readonly DropDownIcon _dropDownIcon = new();
-        //private readonly DropDownContainer _dropDownContainer = new();
+        private readonly DropDownContainer _dropDownContainer = new();
+        private string? _caseSensitiveText = null;
+        private int _caseSensitiveIndex = -1;
         public int SelectedIndex
         {
             get => _selectedIndex;
@@ -84,8 +86,30 @@ namespace custom_case_sensitive_combo_box_from_scratch
             }
             base.OnTextChanged(e);
         }
-        string? _caseSensitiveText = null;
-        int _caseSensitiveIndex = -1;
+
+        protected override void OnParentChanged(EventArgs e)
+        {
+            base.OnParentChanged(e);
+            if (Parent is not null)
+            {
+                _dropDownContainer.MinimumSize = ClientRectangle.Size; // Allows for border
+                _dropDownContainer.VisibleChanged += (sender, e) =>
+                {
+                    localOnParentMoved(Parent, EventArgs.Empty);
+                    localOnParentSizeChanged(Parent, EventArgs.Empty);
+                };
+                Parent.SizeChanged -= localOnParentSizeChanged;
+                Parent.SizeChanged += localOnParentSizeChanged;
+                Parent.Move -= localOnParentMoved;
+                Parent.Move += localOnParentMoved;
+                void localOnParentSizeChanged(object? sender, EventArgs e) =>
+                    MinimumSize = Size;
+                void localOnParentMoved(object? sender, EventArgs e)
+                {
+                    _dropDownContainer.Location = PointToScreen(new Point(0, Height));
+                }
+            }
+        }
 
         public bool DroppedDown
         {
@@ -96,7 +120,8 @@ namespace custom_case_sensitive_combo_box_from_scratch
                 {
                     _droppedDown = value;
                     OnPropertyChanged();
-                    //_dropDownContainer.Visible = value;
+                    if (value && !_dropDownContainer.Visible) _dropDownContainer.Show(this);
+                    else _dropDownContainer.Hide();
                 }
             }
         }
@@ -189,32 +214,18 @@ namespace custom_case_sensitive_combo_box_from_scratch
             }
         }
 
-        class DropDownContainer : Label
+        class DropDownContainer : Form
         {
             public DropDownContainer()
             {
                 Visible = false;
+                AutoSizeMode = AutoSizeMode.GrowAndShrink;
                 AutoSize = true;
-            }
-            protected override void OnParentChanged(EventArgs e)
-            {
-                base.OnParentChanged(e);
-                if (Parent is not null)
-                {
-                    MinimumSize = Parent.Size;
-                    Left = Parent.Left;
-                    Top = Parent.Bottom;
-                    Parent.SizeChanged -= localOnSizeChanged;
-                    Parent.SizeChanged += localOnSizeChanged;
-                    void localOnSizeChanged(object? sender, EventArgs e)
-                    { 
-                        if(sender is CaseSensitiveComboBox)
-                        MinimumSize = Parent.Size;
-                    }
-                }
+                BackColor = Color.White;
+                FormBorderStyle = FormBorderStyle.None;
+                StartPosition = FormStartPosition.Manual;
             }
         }
-
         [DesignerSerializationVisibility(DesignerSerializationVisibility.Content)]
         [Bindable(true)]
         public BindingList<object> Items { get; } = new BindingList<object>();
