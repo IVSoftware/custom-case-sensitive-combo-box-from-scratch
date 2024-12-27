@@ -38,7 +38,6 @@
             comboBox.Font = new Font("Segoe UI", 14F);
             comboBox.Location = new Point(85, 83);
             comboBox.Name = "comboBox";
-            comboBox.SelectedIndex = 0;
             comboBox.Size = new Size(300, 59);
             comboBox.TabIndex = 0;
             // 

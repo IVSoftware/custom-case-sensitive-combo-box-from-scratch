@@ -47,7 +47,6 @@ namespace custom_case_sensitive_combo_box_from_scratch
                 if (Equals(Items[i], e.StringExact))
                 {
                     SelectedIndex = i;
-                    break;
                 }
             }
             DroppedDown = false;
@@ -58,20 +57,36 @@ namespace custom_case_sensitive_combo_box_from_scratch
             switch (e.ListChangedType)
             {
                 case ListChangedType.ItemAdded:
-                    switch(Items[e.NewIndex])
+                    var item = Items[e.NewIndex];
+                    if (item?.ToString() is string text && !string.IsNullOrWhiteSpace(text))
                     {
-                        case Control view:
-                            break;
-                        case object o:
-                            _dropDownContainer.Add(new DefaultView 
-                            { 
-                                Text = o?.ToString() ?? string.Empty,
-                                TextAlign = ContentAlignment.MiddleLeft,
-                                Font = Font,
-                                Height = Height,
-                            });
-                            break;
-                    }                    
+                        switch (item)
+                        {
+                            case Control control when control is ISelectable selectable:
+                                // Custom data template
+                                Debug.Fail("TODO");
+                                break;
+                            case object o:
+                                var view = new DefaultView
+                                {
+                                    Text = o?.ToString() ?? string.Empty,
+                                    TextAlign = ContentAlignment.MiddleLeft,
+                                    Font = Font,
+                                    Height = Height,
+                                };
+                                if(Templates.ContainsKey(text))
+                                {
+                                    throw new InvalidOperationException($"Key '{text}' already exists.");
+                                }
+                                else
+                                {
+                                    Templates[text] = view;
+                                }
+                                _dropDownContainer.Add(view);
+                                break;
+                        }
+                    }
+                    else Debug.Fail("Unexpected text is whitespace or null");
                     break;
             }
         }
@@ -79,6 +94,7 @@ namespace custom_case_sensitive_combo_box_from_scratch
         private readonly RichTextBoxEx _richTextBox = new();
         private readonly DropDownIcon _dropDownIcon = new();
         private readonly DropDownContainer _dropDownContainer = new();
+        private Dictionary<string, object> Templates { get; } = new ();
         private string? _caseSensitiveText = null;
         private int _caseSensitiveIndex = -1;
         public int SelectedIndex
@@ -97,7 +113,7 @@ namespace custom_case_sensitive_combo_box_from_scratch
                 }
             }
         }
-        int _selectedIndex = default;
+        int _selectedIndex = -1;
         protected override void OnTextChanged(EventArgs e)
         {
             var aspirant =
@@ -149,12 +165,37 @@ namespace custom_case_sensitive_combo_box_from_scratch
                 {
                     _droppedDown = value;
                     OnPropertyChanged();
-                    if (value && !_dropDownContainer.Visible) _dropDownContainer.Show(this);
+                    if (value && !_dropDownContainer.Visible)
+                    {
+                        OnDroppedDown(EventArgs.Empty);
+                        _dropDownContainer.Show(this);
+                    }
                     else _dropDownContainer.Hide();
                 }
             }
         }
         bool _droppedDown = default;
+
+        public event EventHandler? DropDown;
+
+        protected virtual void OnDroppedDown(EventArgs e)
+        {
+            DropDown?.Invoke(this, e);
+            RefreshSelection();
+        }
+
+        private void RefreshSelection()
+        {
+            int index = 0;
+            foreach (var item in Templates.Values)
+            {
+                if (item is ISelectable selectable)
+                {
+                    selectable.IsSelected = index == SelectedIndex;
+                }
+                index++;
+            }
+        }
 
         protected override void OnSizeChanged(EventArgs e)
         {
@@ -238,9 +279,24 @@ namespace custom_case_sensitive_combo_box_from_scratch
             }
         }
 
-        class DefaultView : Label
+        class DefaultView : Label, ISelectable
         {
             public override string ToString() => Text;
+            public bool IsSelected
+            {
+                get => _isSelected;
+                set
+                {
+                    if (!Equals(_isSelected, value))
+                    {
+                        _isSelected = value;
+                        BackColor = value ? Color.CornflowerBlue : Color.White;
+                        ForeColor = value ? Color.White : Color.Black;
+                    }
+                }
+            }
+            bool _isSelected = default;
+
         }
 
         class DropDownContainer : Form
@@ -312,5 +368,9 @@ namespace custom_case_sensitive_combo_box_from_scratch
             public ItemClickedEventArgs(string? stringExact) => StringExact = stringExact;
             public string? StringExact { get; }
         }
+    }
+    public interface ISelectable
+    {
+        bool IsSelected { get; set; }
     }
 }
