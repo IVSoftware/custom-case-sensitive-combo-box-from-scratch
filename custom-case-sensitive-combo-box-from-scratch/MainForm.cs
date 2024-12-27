@@ -309,7 +309,25 @@ namespace custom_case_sensitive_combo_box_from_scratch
                 FormBorderStyle = FormBorderStyle.None;
                 StartPosition = FormStartPosition.Manual;
                 Controls.Add(_flowLayoutPanel);
+                Selectables.ListChanged += OnSelectablesChanged;
             }
+
+            protected virtual void OnSelectablesChanged(object? sender, ListChangedEventArgs e)
+            {
+                switch (e.ListChangedType)
+                {
+                    case ListChangedType.Reset:
+                        Controls.Clear();
+                        break;
+                    case ListChangedType.ItemAdded:
+                        if(Selectables[e.NewIndex] is Control control)
+                        {
+                            _flowLayoutPanel.Controls.Add(control);
+                        }
+                        break;
+                }
+            }
+
             private readonly FlowLayoutPanel _flowLayoutPanel = new FlowLayoutPanel
             {
                 Dock = DockStyle.Fill,
@@ -323,7 +341,7 @@ namespace custom_case_sensitive_combo_box_from_scratch
                 _flowLayoutPanel.MinimumSize = MinimumSize;
             }
 
-            internal void Add(Control control)
+            internal void Add<T>(T control) where T: Control, ISelectable
             {
                 control.BackColor = Color.White;
                 control.Margin = new Padding(0,1,0,0);
@@ -342,7 +360,7 @@ namespace custom_case_sensitive_combo_box_from_scratch
                         _flowLayoutPanel.Width = control.Width;
                         break;
                 }
-                _flowLayoutPanel.Controls.Add(control);
+                Selectables.Add(control);
                 Height = _flowLayoutPanel.Controls.OfType<Control>().Sum(_=>_.Height);
                 control.Click += (sender, e) =>
                 {
@@ -357,6 +375,7 @@ namespace custom_case_sensitive_combo_box_from_scratch
                     }
                 };
             }
+            BindingList<ISelectable> Selectables { get; } = new();
             public event EventHandler<ItemClickedEventArgs>? ItemClicked;
         }
         [DesignerSerializationVisibility(DesignerSerializationVisibility.Content)]
