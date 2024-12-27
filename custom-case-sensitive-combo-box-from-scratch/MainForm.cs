@@ -1,5 +1,8 @@
-﻿using System.ComponentModel;
+﻿using System.Collections;
+using System.ComponentModel;
+using System.Diagnostics;
 using System.Runtime.CompilerServices;
+using System.Windows.Forms;
 
 namespace custom_case_sensitive_combo_box_from_scratch
 {
@@ -7,7 +10,7 @@ namespace custom_case_sensitive_combo_box_from_scratch
     {
         public MainForm() => InitializeComponent();
     }
-    class CaseSensitiveComboBox : Panel
+    public class CaseSensitiveComboBox : Panel
     {
         public CaseSensitiveComboBox()
         {
@@ -21,16 +24,37 @@ namespace custom_case_sensitive_combo_box_from_scratch
             tableLayoutPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, Width=80));
             tableLayoutPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, Width=20));
             Controls.Add(tableLayoutPanel);
-            _richTextBox = new RichTextBoxEx();
-            _dropDownIcon = new DropDownIcon();
+            _richTextBox.TextChanged += (sender, e) => OnTextChanged(EventArgs.Empty);
             tableLayoutPanel.Controls.Add(_richTextBox,0,0);
             tableLayoutPanel.Controls.Add(_dropDownIcon, 1,0);
             _dropDownIcon.MouseDown += (sender, e) => 
                 BeginInvoke(()=> DroppedDown = !DroppedDown);
+            Items.ListChanged += OnItemsChanged;
         }
-        RichTextBox _richTextBox;
-        DropDownIcon _dropDownIcon;
-        public int selectedIndex
+
+        private void OnItemsChanged(object? sender, ListChangedEventArgs e)
+        {
+            switch (e.ListChangedType)
+            {
+                case ListChangedType.Reset:
+                    break;
+                case ListChangedType.ItemAdded:
+                    break;
+                case ListChangedType.ItemDeleted:
+                    break;
+                case ListChangedType.ItemMoved:
+                    break;
+                case ListChangedType.ItemChanged:
+                    break;
+                default:
+                    break;
+            }
+        }
+
+        private readonly RichTextBox _richTextBox = new();
+        private readonly DropDownIcon _dropDownIcon = new();
+        //private readonly DropDownContainer _dropDownContainer = new();
+        public int SelectedIndex
         {
             get => _selectedIndex;
             set
@@ -42,6 +66,27 @@ namespace custom_case_sensitive_combo_box_from_scratch
                 }
             }
         }
+        int _selectedIndex = default;
+        protected override void OnTextChanged(EventArgs e)
+        {
+            var aspirant =
+                Items
+                .OfType<object>()
+                .FirstOrDefault(_ =>
+                    (_?.ToString() ?? string.Empty)
+                    .IndexOf(Text) == 0, StringComparison.Ordinal);
+            Debug.Write($"{aspirant}");
+            if (aspirant != null)
+            {
+                _caseSensitiveIndex = Items.IndexOf(aspirant);
+                _caseSensitiveText = aspirant.ToString();
+                Debug.WriteLine($" {_caseSensitiveIndex}");
+            }
+            base.OnTextChanged(e);
+        }
+        string? _caseSensitiveText = null;
+        int _caseSensitiveIndex = -1;
+
         public bool DroppedDown
         {
             get => _droppedDown;
@@ -51,13 +96,11 @@ namespace custom_case_sensitive_combo_box_from_scratch
                 {
                     _droppedDown = value;
                     OnPropertyChanged();
+                    //_dropDownContainer.Visible = value;
                 }
             }
         }
         bool _droppedDown = default;
-
-
-        int _selectedIndex = default;
 
         protected override void OnSizeChanged(EventArgs e)
         {
@@ -79,6 +122,7 @@ namespace custom_case_sensitive_combo_box_from_scratch
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
 
         public event PropertyChangedEventHandler? PropertyChanged;
+
         class RichTextBoxEx : RichTextBox
         {
             public RichTextBoxEx()
@@ -133,6 +177,7 @@ namespace custom_case_sensitive_combo_box_from_scratch
             }
             bool _isPlaceholderText = true;
         }
+
         class DropDownIcon : Label
         {
             public DropDownIcon()
@@ -143,5 +188,52 @@ namespace custom_case_sensitive_combo_box_from_scratch
                 TextAlign = ContentAlignment.MiddleCenter;
             }
         }
+
+        class DropDownContainer : Label
+        {
+            public DropDownContainer()
+            {
+                Visible = false;
+                AutoSize = true;
+            }
+            protected override void OnParentChanged(EventArgs e)
+            {
+                base.OnParentChanged(e);
+                if (Parent is not null)
+                {
+                    MinimumSize = Parent.Size;
+                    Left = Parent.Left;
+                    Top = Parent.Bottom;
+                    Parent.SizeChanged -= localOnSizeChanged;
+                    Parent.SizeChanged += localOnSizeChanged;
+                    void localOnSizeChanged(object? sender, EventArgs e)
+                    { 
+                        if(sender is CaseSensitiveComboBox)
+                        MinimumSize = Parent.Size;
+                    }
+                }
+            }
+        }
+
+        [DesignerSerializationVisibility(DesignerSerializationVisibility.Content)]
+        [Bindable(true)]
+        public BindingList<object> Items { get; } = new BindingList<object>();
+    }
+    public class Item
+    {
+        public static implicit operator Item(string text) =>
+            new Item { Text = text };
+        public string Text { get; set; } = "Item";
+
+        [Category("Appearance")]
+        public Color BackColor { get; set; } = Color.White;
+
+        [Category("Appearance")]
+        public Color ForeColor { get; set; } = Color.Black;
+
+        [Browsable(false)]
+        internal CheckBox? Control { get; set; }
+
+        public override string ToString() => Text;
     }
 }
