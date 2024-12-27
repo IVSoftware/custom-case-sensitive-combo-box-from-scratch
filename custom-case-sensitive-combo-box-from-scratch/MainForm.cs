@@ -75,7 +75,6 @@ namespace custom_case_sensitive_combo_box_from_scratch
             }
             DroppedDown = false;
         }
-
         private void OnItemsChanged(object? sender, ListChangedEventArgs e)
         {
             switch (e.ListChangedType)
@@ -166,7 +165,6 @@ namespace custom_case_sensitive_combo_box_from_scratch
                 }
             }
         }
-
         public bool DroppedDown
         {
             get => _droppedDown;
@@ -199,7 +197,6 @@ namespace custom_case_sensitive_combo_box_from_scratch
                     Height - Padding.Vertical;
             }
         }
-
         protected virtual void OnPropertyChanged([CallerMemberName] string? propertyName = null) => 
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
 
@@ -218,7 +215,6 @@ namespace custom_case_sensitive_combo_box_from_scratch
                 KeyDown += Commit;
                 BackColor = DesignMode ? Color.LightGray : Color.White;
             }
-
             private void Commit(object? sender, EventArgs e)
             {
                 if(e is KeyEventArgs eKey)
@@ -239,7 +235,6 @@ namespace custom_case_sensitive_combo_box_from_scratch
                 }
                 BeginInvoke(() => SelectAll());
             }
-
             protected override void OnFontChanged(EventArgs e)
             {
                 base.OnFontChanged(e);
@@ -258,7 +253,6 @@ namespace custom_case_sensitive_combo_box_from_scratch
                 }
             }
             public bool IsPlaceholderText { get; private set; } = true;
-
             public string PlaceholderText { get; set; } = "Select";
         }
 
@@ -290,7 +284,6 @@ namespace custom_case_sensitive_combo_box_from_scratch
                 }
             }
             bool _isSelected = default;
-
         }
 
         class DropDownContainer : Form
@@ -305,7 +298,6 @@ namespace custom_case_sensitive_combo_box_from_scratch
                 Controls.Add(_flowLayoutPanel);
                 Selectables.ListChanged += OnSelectablesChanged;
             }
-
             protected virtual void OnSelectablesChanged(object? sender, ListChangedEventArgs e)
             {
                 switch (e.ListChangedType)
@@ -334,7 +326,6 @@ namespace custom_case_sensitive_combo_box_from_scratch
                 base.OnMinimumSizeChanged(e);
                 _flowLayoutPanel.MinimumSize = MinimumSize;
             }
-
             internal void Add<T>(T control) where T: Control, ISelectable
             {
                 control.BackColor = Color.White;
@@ -378,7 +369,6 @@ namespace custom_case_sensitive_combo_box_from_scratch
                     RefreshSelection();
                 }
             }
-
             private void RefreshSelection()
             {
                 int index = 0;
@@ -391,7 +381,6 @@ namespace custom_case_sensitive_combo_box_from_scratch
                     index++;
                 }
             }
-
             public int SelectedIndex
             {
                 get => _selectedIndex;

@@ -1,1 +1,1 @@
-# custom-case-sensitive-combo-box-from-scratch
+Consider that it might be easier to make your own extended `ComboBoxEx` and make it behave exactly the way you want it to.
