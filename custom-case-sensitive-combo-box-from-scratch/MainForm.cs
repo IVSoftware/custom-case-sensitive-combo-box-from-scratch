@@ -8,7 +8,13 @@ namespace custom_case_sensitive_combo_box_from_scratch
 {
     public partial class MainForm : Form
     {
-        public MainForm() => InitializeComponent();
+        public MainForm()
+        {
+            InitializeComponent();
+            comboBox.Items.Add("zebra");
+            comboBox.Items.Add("Zebra");
+            comboBox.Items.Add("ZEBRA");
+        }
     }
     public class CaseSensitiveComboBox : Panel
     {
@@ -30,23 +36,42 @@ namespace custom_case_sensitive_combo_box_from_scratch
             _dropDownIcon.MouseDown += (sender, e) => 
                 BeginInvoke(()=> DroppedDown = !DroppedDown);
             Items.ListChanged += OnItemsChanged;
+            HandleCreated += (sender, e) => BeginInvoke(() => Focus());
+            _dropDownContainer.ItemClicked += OnItemClicked;
+        }
+
+        private void OnItemClicked(object? sender, ItemClickedEventArgs e)
+        {
+            for (int i = 0; i < Items.Count; i++)
+            {
+                if (Equals(Items[i], e.StringExact))
+                {
+                    SelectedIndex = i;
+                    break;
+                }
+            }
+            DroppedDown = false;
         }
 
         private void OnItemsChanged(object? sender, ListChangedEventArgs e)
         {
             switch (e.ListChangedType)
             {
-                case ListChangedType.Reset:
-                    break;
                 case ListChangedType.ItemAdded:
-                    break;
-                case ListChangedType.ItemDeleted:
-                    break;
-                case ListChangedType.ItemMoved:
-                    break;
-                case ListChangedType.ItemChanged:
-                    break;
-                default:
+                    switch(Items[e.NewIndex])
+                    {
+                        case Control view:
+                            break;
+                        case object o:
+                            _dropDownContainer.Add(new DefaultView 
+                            { 
+                                Text = o?.ToString() ?? string.Empty,
+                                TextAlign = ContentAlignment.MiddleLeft,
+                                Font = Font,
+                                Height = Height,
+                            });
+                            break;
+                    }                    
                     break;
             }
         }
@@ -65,6 +90,10 @@ namespace custom_case_sensitive_combo_box_from_scratch
                 {
                     _selectedIndex = value;
                     OnPropertyChanged();
+                    _richTextBox.Text =
+                        value == -1
+                        ? String.Empty
+                        : Items[value]?.ToString() ?? string.Empty;
                 }
             }
         }
@@ -136,11 +165,6 @@ namespace custom_case_sensitive_combo_box_from_scratch
                 _dropDownIcon.Width = 
                     Height - Padding.Vertical;
             }
-        }
-        protected override void OnCreateControl()
-        {
-            base.OnCreateControl();
-            BeginInvoke(() => Focus());
         }
 
         protected virtual void OnPropertyChanged([CallerMemberName] string? propertyName = null) => 
@@ -214,37 +238,79 @@ namespace custom_case_sensitive_combo_box_from_scratch
             }
         }
 
+        class DefaultView : Label
+        {
+            public override string ToString() => Text;
+        }
+
         class DropDownContainer : Form
         {
             public DropDownContainer()
             {
                 Visible = false;
-                AutoSizeMode = AutoSizeMode.GrowAndShrink;
-                AutoSize = true;
                 BackColor = Color.White;
+                AutoSize = false;
                 FormBorderStyle = FormBorderStyle.None;
                 StartPosition = FormStartPosition.Manual;
+                Controls.Add(_flowLayoutPanel);
             }
+            private readonly FlowLayoutPanel _flowLayoutPanel = new FlowLayoutPanel
+            {
+                Dock = DockStyle.Fill,
+                BackColor = Color.Coral,
+                FlowDirection = FlowDirection.LeftToRight,
+                Padding = new()
+            };
+            protected override void OnMinimumSizeChanged(EventArgs e)
+            {
+                base.OnMinimumSizeChanged(e);
+                _flowLayoutPanel.MinimumSize = MinimumSize;
+            }
+
+            internal void Add(Control control)
+            {
+                control.BackColor = Color.White;
+                control.Margin = new Padding(0,1,0,0);
+                using (var graphics = control.CreateGraphics())
+                {
+                    var sizeF = graphics.MeasureString(control.Text, control.Font);
+                    control.Width = Convert.ToInt32(sizeF.Width);
+                }
+                control.Anchor = AnchorStyles.Left | AnchorStyles.Right;
+                switch (control.Width.CompareTo(_flowLayoutPanel.Width))
+                {
+                    case -1:
+                        control.Width = _flowLayoutPanel.Width;
+                        break;
+                    case 1:
+                        _flowLayoutPanel.Width = control.Width;
+                        break;
+                }
+                _flowLayoutPanel.Controls.Add(control);
+                Height = _flowLayoutPanel.Controls.OfType<Control>().Sum(_=>_.Height);
+                control.Click += (sender, e) =>
+                {
+                    switch (sender)
+                    {
+                        case Label label:
+                            ItemClicked?.Invoke(this, new ItemClickedEventArgs(label.Text));
+                            break;
+                        default:
+                            ItemClicked?.Invoke(this, new ItemClickedEventArgs(sender?.ToString()));
+                            break;
+                    }
+                };
+            }
+            public event EventHandler<ItemClickedEventArgs>? ItemClicked;
         }
         [DesignerSerializationVisibility(DesignerSerializationVisibility.Content)]
         [Bindable(true)]
         public BindingList<object> Items { get; } = new BindingList<object>();
-    }
-    public class Item
-    {
-        public static implicit operator Item(string text) =>
-            new Item { Text = text };
-        public string Text { get; set; } = "Item";
 
-        [Category("Appearance")]
-        public Color BackColor { get; set; } = Color.White;
-
-        [Category("Appearance")]
-        public Color ForeColor { get; set; } = Color.Black;
-
-        [Browsable(false)]
-        internal CheckBox? Control { get; set; }
-
-        public override string ToString() => Text;
+        class ItemClickedEventArgs : EventArgs
+        {
+            public ItemClickedEventArgs(string? stringExact) => StringExact = stringExact;
+            public string? StringExact { get; }
+        }
     }
 }
