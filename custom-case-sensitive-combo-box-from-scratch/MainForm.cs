@@ -47,7 +47,11 @@ namespace custom_case_sensitive_combo_box_from_scratch
                             .IndexOf(Text) == 0, StringComparison.Ordinal)
                         as ISelectable;
                     Debug.Write($"{aspirant}");
-                    if (aspirant != null)
+                    if (aspirant is null || string.IsNullOrWhiteSpace(Text))
+                    {
+                        _dropDownContainer.SelectedIndex = -1;
+                    }
+                    else
                     {
                         _dropDownContainer.SelectedIndex = _dropDownContainer.Selectables.IndexOf(aspirant);
                         _caseSensitiveText = aspirant.ToString();
@@ -68,7 +72,7 @@ namespace custom_case_sensitive_combo_box_from_scratch
         {
             for (int i = 0; i < Items.Count; i++)
             {
-                if (Equals(Items[i], e.StringExact))
+                if (Equals(Items[i].ToString(), e.StringExact))
                 {
                     SelectedIndex = i;
                 }
