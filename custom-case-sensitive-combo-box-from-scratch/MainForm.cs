@@ -30,7 +30,7 @@ namespace custom_case_sensitive_combo_box_from_scratch
             tableLayoutPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, Width=80));
             tableLayoutPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, Width=20));
             Controls.Add(tableLayoutPanel);
-            _richTextBox.TextChanged += (sender, e) => OnTextChanged(EventArgs.Empty);
+            _richTextBox.TextChanged += (sender, e) => Text = _richTextBox.Text;
             tableLayoutPanel.Controls.Add(_richTextBox,0,0);
             tableLayoutPanel.Controls.Add(_dropDownIcon, 1,0);
             _dropDownIcon.MouseDown += (sender, e) => 
@@ -113,7 +113,7 @@ namespace custom_case_sensitive_combo_box_from_scratch
                     _richTextBox.Text =
                         value == -1
                         ? String.Empty
-                        : Items[value]?.ToString() ?? string.Empty;
+                        : _dropDownContainer.Selectables[value]?.ToString() ?? string.Empty;
                 }
             }
         }
