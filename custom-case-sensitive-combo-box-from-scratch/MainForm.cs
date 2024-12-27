@@ -30,7 +30,31 @@ namespace custom_case_sensitive_combo_box_from_scratch
             tableLayoutPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, Width=80));
             tableLayoutPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, Width=20));
             Controls.Add(tableLayoutPanel);
-            _richTextBox.TextChanged += (sender, e) => Text = _richTextBox.Text;
+            _richTextBox.TextChanged += (sender, e) =>
+            {
+                Text = _richTextBox.Text;
+                if (_richTextBox.IsPlaceholderText)
+                {
+                    _dropDownContainer.SelectedIndex = -1;
+                }
+                else
+                {
+                    var aspirant =
+                        _dropDownContainer.Selectables
+                        .OfType<object>()
+                        .FirstOrDefault(_ =>
+                            (_?.ToString() ?? string.Empty)
+                            .IndexOf(Text) == 0, StringComparison.Ordinal)
+                        as ISelectable;
+                    Debug.Write($"{aspirant}");
+                    if (aspirant != null)
+                    {
+                        _dropDownContainer.SelectedIndex = _dropDownContainer.Selectables.IndexOf(aspirant);
+                        _caseSensitiveText = aspirant.ToString();
+                        Debug.WriteLine($" {_dropDownContainer.SelectedIndex}");
+                    }
+                }
+            };
             tableLayoutPanel.Controls.Add(_richTextBox,0,0);
             tableLayoutPanel.Controls.Add(_dropDownIcon, 1,0);
             _dropDownIcon.MouseDown += (sender, e) => 
@@ -118,24 +142,6 @@ namespace custom_case_sensitive_combo_box_from_scratch
             }
         }
         int _selectedIndex = -1;
-        protected override void OnTextChanged(EventArgs e)
-        {
-            var aspirant =
-                _dropDownContainer.Selectables
-                .OfType<object>()
-                .FirstOrDefault(_ =>
-                    (_?.ToString() ?? string.Empty)
-                    .IndexOf(Text) == 0, StringComparison.Ordinal)
-                as ISelectable;
-            Debug.Write($"{aspirant}");
-            if (aspirant != null)
-            {
-                _dropDownContainer.SelectedIndex = _dropDownContainer.Selectables.IndexOf(aspirant);
-                _caseSensitiveText = aspirant.ToString();
-                Debug.WriteLine($" {_dropDownContainer.SelectedIndex}");
-            }
-            base.OnTextChanged(e);
-        }
 
         protected override void OnParentChanged(EventArgs e)
         {
@@ -207,7 +213,7 @@ namespace custom_case_sensitive_combo_box_from_scratch
                 Anchor = AnchorStyles.Left | AnchorStyles.Right;
                 BorderStyle = BorderStyle.None;
                 Text = PlaceholderText;
-                _isPlaceholderText = true;
+                IsPlaceholderText = true;
                 LostFocus += Commit;
                 KeyDown += Commit;
                 BackColor = DesignMode ? Color.LightGray : Color.White;
@@ -229,7 +235,7 @@ namespace custom_case_sensitive_combo_box_from_scratch
                 if (string.IsNullOrWhiteSpace(Text))
                 {
                     Text = PlaceholderText;
-                    _isPlaceholderText = true;
+                    IsPlaceholderText = true;
                 }
                 BeginInvoke(() => SelectAll());
             }
@@ -245,13 +251,13 @@ namespace custom_case_sensitive_combo_box_from_scratch
             protected override void OnMouseDown(MouseEventArgs e)
             {
                 base.OnMouseDown(e);
-                if(_isPlaceholderText)
+                if(IsPlaceholderText)
                 {
                     Text = string.Empty;
-                    _isPlaceholderText = false;
+                    IsPlaceholderText = false;
                 }
             }
-            bool _isPlaceholderText = true;
+            public bool IsPlaceholderText { get; private set; } = true;
 
             public string PlaceholderText { get; set; } = "Select";
         }
