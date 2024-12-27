@@ -1,6 +1,14 @@
-Consider that it might be easier to make your own extended `ComboBoxEx` and make it behave exactly the way you want it to. One of the easier ways to make the list view is by using a borderless top-level form with a docked flow layout panel. Other than that, you need a text entry (a single-line RichTextBox works well for this) and a control for the drop down icon to toggle the visible state of the container.
+Consider that it might be easier to make your own control from scratch (i.e. _without_ even trying to inherit `ComboBox`) and make it behave exactly the way you want it to. One of the easier ways to make the list view is by using a borderless top-level form with a docked flow layout panel. Other than that, you need a text entry (a single-line `RichTextBox` works well for this) and a control for the drop down icon to toggle the visible state of the container.
 
 It is important to track the location of the drop down item container, for example if the parent form moves.
+
+
+[![case-sensitive tracking][1]][1]
+
+___
+
+**Container for drop list**
+
 
 ~~~
 class DropDownContainer : Form
@@ -114,6 +122,8 @@ class DropDownContainer : Form
 
 ___
 
+**Object Wrapper for display in drop list**
+
 In this implementation, basic types like {zebra, Zebra, ZEBRA} or {1, 2, 3} are wrapped in a `DefaultTemplate`, but it leaves room for expansion with any `ISelectable` control class.
 
 ~~~
@@ -143,4 +153,9 @@ class DefaultView : Label, ISelectable
 }
 ~~~
 
+___
+
 I'll put a full example repo in the comments so you can play around with it as a starting point for your project.
+
+
+  [1]: https://i.sstatic.net/WzDhxzwX.png
