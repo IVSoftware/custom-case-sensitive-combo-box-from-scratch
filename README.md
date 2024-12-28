@@ -8,7 +8,7 @@ ___
 
 **The Essentials**
 
-The general idea is that you just need the basic elements of text entry, a toggle for the visibility of a top-level borderless container (configured to display list items), and a dynamic means to track any movement of the custom control (or more likely, the parent form of the custom) so that the "list box" stays stuck to the main control.
+The general idea is that you just need the basic elements of text entry, a toggle for the visibility of a top-level container (i.e. a borderless `Form`, configured to display list items), and a dynamic means to track any movement of the custom control (or more likely, the parent form of the custom) so that the "list box" stays stuck to the main control.
 
 - Using a single-line RichTextBox is a good way to get text entry without the "focus underline" artifact of TextBox. 
 
