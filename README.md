@@ -22,7 +22,7 @@ The general idea is that you just need the basic elements of text entry, a toggl
 
 ___
 
-You can browse a [full example repo](https://github.com/IVSoftware/custom-case-sensitive-combo-box-from-scratch.git) and you can play around with it as a starting point for your project. See also: https://github.com/IVSoftware/custom-combo-box-from-scratch.git which demonstrates a version with dynamic features.
+You can browse a [full example repo](https://github.com/IVSoftware/custom-case-sensitive-combo-box-from-scratch.git) and you can play around with it as a starting point for your project. See also: https://stackoverflow.com/a/78998658/5438626 which demonstrates a version with dynamic features.
 
 The TL;DR is that we're going to track text changes on the `RichTextBox` to search the view templates in the `_dropDownContainer_` and visually select the first case-sensitive match. Clicking on a line item:
 
