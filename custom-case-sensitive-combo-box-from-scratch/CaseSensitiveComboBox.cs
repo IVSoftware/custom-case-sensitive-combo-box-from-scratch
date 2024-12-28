@@ -6,6 +6,7 @@ using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Tasks;
+using System.Windows.Forms;
 
 namespace custom_case_sensitive_combo_box_from_scratch
 {
@@ -13,6 +14,7 @@ namespace custom_case_sensitive_combo_box_from_scratch
     {
         public CaseSensitiveComboBox()
         {
+            _dropDownContainer = new DropDownContainer(this);
             BorderStyle = BorderStyle.FixedSingle;
             BackColor = Color.White;
             var tableLayoutPanel = new TableLayoutPanel
@@ -59,6 +61,19 @@ namespace custom_case_sensitive_combo_box_from_scratch
             Items.ListChanged += OnItemsChanged;
             HandleCreated += (sender, e) => BeginInvoke(() => Focus());
             _dropDownContainer.ItemClicked += OnItemClicked;
+
+            // Metrics for list
+            HandleCreated +=  _dropDownContainer.UpdateMetrics;
+            SizeChanged += _dropDownContainer.UpdateMetrics;
+            Move += _dropDownContainer.UpdateMetrics;
+            ParentChanged += (sender, e) =>
+            {
+                if (Parent is not null)
+                {
+                    Parent.Move -= _dropDownContainer.UpdateMetrics;
+                    Parent.Move += _dropDownContainer.UpdateMetrics;
+                }
+            };
         }
 
         private void OnItemClicked(object? sender, ItemClickedEventArgs e)
@@ -105,7 +120,7 @@ namespace custom_case_sensitive_combo_box_from_scratch
 
         private readonly RichTextBoxEx _richTextBox = new();
         private readonly DropDownIcon _dropDownIcon = new();
-        private readonly DropDownContainer _dropDownContainer = new();
+        private readonly DropDownContainer _dropDownContainer;
         private string? _caseSensitiveText = null;
 
         /// <summary>
@@ -130,29 +145,6 @@ namespace custom_case_sensitive_combo_box_from_scratch
         }
         int _selectedIndex = -1;
 
-        protected override void OnParentChanged(EventArgs e)
-        {
-            base.OnParentChanged(e);
-            if (Parent is not null)
-            {
-                _dropDownContainer.MinimumSize = ClientRectangle.Size; // Allows for border
-                _dropDownContainer.VisibleChanged += (sender, e) =>
-                {
-                    localOnParentMoved(Parent, EventArgs.Empty);
-                    localOnParentSizeChanged(Parent, EventArgs.Empty);
-                };
-                Parent.SizeChanged -= localOnParentSizeChanged;
-                Parent.SizeChanged += localOnParentSizeChanged;
-                Parent.Move -= localOnParentMoved;
-                Parent.Move += localOnParentMoved;
-                void localOnParentSizeChanged(object? sender, EventArgs e) =>
-                    MinimumSize = Size;
-                void localOnParentMoved(object? sender, EventArgs e)
-                {
-                    _dropDownContainer.Location = PointToScreen(new Point(0, Height));
-                }
-            }
-        }
         public bool DroppedDown
         {
             get => _droppedDown;
@@ -174,17 +166,6 @@ namespace custom_case_sensitive_combo_box_from_scratch
         bool _droppedDown = default;
 
         public event EventHandler? DropDown;
-
-        protected override void OnSizeChanged(EventArgs e)
-        {
-            base.OnSizeChanged(e);
-            if (IsHandleCreated)
-            {
-                _dropDownIcon.Height =
-                _dropDownIcon.Width =
-                    Height - Padding.Vertical;
-            }
-        }
         protected virtual void OnPropertyChanged([CallerMemberName] string? propertyName = null) =>
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
 
@@ -257,6 +238,7 @@ namespace custom_case_sensitive_combo_box_from_scratch
 
         class DefaultView : Label, ISelectable
         {
+            public DefaultView() => BackColor = Color.White;
             public override string ToString() => Text;
             public bool IsSelected
             {
@@ -276,7 +258,7 @@ namespace custom_case_sensitive_combo_box_from_scratch
 
         class DropDownContainer : Form
         {
-            public DropDownContainer()
+            public DropDownContainer(Control control)
             {
                 Visible = false;
                 BackColor = Color.White;
@@ -285,7 +267,9 @@ namespace custom_case_sensitive_combo_box_from_scratch
                 StartPosition = FormStartPosition.Manual;
                 Controls.Add(_flowLayoutPanel);
                 Selectables.ListChanged += OnSelectablesChanged;
+                Control = control;
             }
+            private Control Control { get; }
             protected virtual void OnSelectablesChanged(object? sender, ListChangedEventArgs e)
             {
                 switch (e.ListChangedType)
@@ -296,40 +280,23 @@ namespace custom_case_sensitive_combo_box_from_scratch
                     case ListChangedType.ItemAdded:
                         if (Selectables[e.NewIndex] is Control control)
                         {
-                            control.BackColor = Color.White;
-                            control.Margin = new Padding(0, 1, 0, 0);
-                            using (var graphics = control.CreateGraphics())
-                            {
-                                var sizeF = graphics.MeasureString(control.Text, control.Font);
-                                control.Width = Convert.ToInt32(sizeF.Width);
-                            }
-                            control.Anchor = AnchorStyles.Left | AnchorStyles.Right;
-                            switch (control.Width.CompareTo(_flowLayoutPanel.Width))
-                            {
-                                case -1:
-                                    control.Width = _flowLayoutPanel.Width;
-                                    break;
-                                case 1:
-                                    _flowLayoutPanel.Width = control.Width;
-                                    break;
-                            }
                             control.Click += (sender, e) =>
                             {
                                 switch (sender)
                                 {
-                                    case Label label:
-                                        ItemClicked?.Invoke(this, new ItemClickedEventArgs(label.Text));
+                                    case ISelectable selectable:
+                                        ItemClicked?.Invoke(this, new ItemClickedEventArgs(selectable.Text));
                                         break;
                                     default:
-                                        ItemClicked?.Invoke(this, new ItemClickedEventArgs(sender?.ToString()));
+                                        Debug.Fail("ADVISORY TODO: This is much easier if your data template inherits ISelectable");
                                         break;
                                 }
                             };
                             _flowLayoutPanel.Controls.Add(control);
                         }
-                        Height = Selectables.OfType<Control>().Sum(_ => _.Height);
                         break;
                 }
+                UpdateMetrics(this, EventArgs.Empty);
             }
 
             private readonly FlowLayoutPanel _flowLayoutPanel = new FlowLayoutPanel
@@ -339,11 +306,6 @@ namespace custom_case_sensitive_combo_box_from_scratch
                 FlowDirection = FlowDirection.LeftToRight,
                 Padding = new()
             };
-            protected override void OnMinimumSizeChanged(EventArgs e)
-            {
-                base.OnMinimumSizeChanged(e);
-                _flowLayoutPanel.MinimumSize = MinimumSize;
-            }
             internal BindingList<ISelectable> Selectables { get; } = new();
             protected override void OnVisibleChanged(EventArgs e)
             {
@@ -365,6 +327,38 @@ namespace custom_case_sensitive_combo_box_from_scratch
                     index++;
                 }
             }
+
+            internal void UpdateMetrics(object? sender, EventArgs e)
+            {
+                if(Control.IsHandleCreated)
+                {
+                    var screen = Control.RectangleToScreen(Control.ClientRectangle);
+                    // "Same" location as control, offset by the height of the control.
+                    Location = new Point(screen.Location.X, screen.Location.Y + screen.Height);
+                }
+
+                foreach (var control in Selectables.OfType<Control>())
+                {
+                    control.Margin = new Padding(0, 1, 0, 0);
+                    using (var graphics = control.CreateGraphics())
+                    {
+                        var sizeF = graphics.MeasureString(control.Text, control.Font);
+                        control.Width = Convert.ToInt32(sizeF.Width);
+                    }
+                    //control.Anchor = AnchorStyles.Left | AnchorStyles.Right;
+                    //switch (control.Width.CompareTo(_flowLayoutPanel.Width))
+                    //{
+                    //    case -1:
+                    //        control.Width = _flowLayoutPanel.Width;
+                    //        break;
+                    //    case 1:
+                    //        _flowLayoutPanel.Width = control.Width;
+                    //        break;
+                    //}
+                    //Height = Selectables.OfType<Control>().Sum(_ => _.Height);
+                }
+            }
+
             public int SelectedIndex
             {
                 get => _selectedIndex;
