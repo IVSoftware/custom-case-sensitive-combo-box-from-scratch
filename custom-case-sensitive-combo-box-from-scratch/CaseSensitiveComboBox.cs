@@ -336,8 +336,9 @@ namespace custom_case_sensitive_combo_box_from_scratch
                     // "Same" location as control, offset by the height of the control.
                     Location = new Point(screen.Location.X, screen.Location.Y + screen.Height);
                 }
-
-                foreach (var control in Selectables.OfType<Control>())
+                var minWidth = Control.ClientRectangle.Width;
+                var controls = Selectables.OfType<Control>().ToArray();
+                foreach (var control in controls)
                 {
                     control.Margin = new Padding(0, 1, 0, 0);
                     using (var graphics = control.CreateGraphics())
@@ -345,20 +346,12 @@ namespace custom_case_sensitive_combo_box_from_scratch
                         var sizeF = graphics.MeasureString(control.Text, control.Font);
                         control.Width = Convert.ToInt32(sizeF.Width);
                     }
-                    //control.Anchor = AnchorStyles.Left | AnchorStyles.Right;
-                    //switch (control.Width.CompareTo(_flowLayoutPanel.Width))
-                    //{
-                    //    case -1:
-                    //        control.Width = _flowLayoutPanel.Width;
-                    //        break;
-                    //    case 1:
-                    //        _flowLayoutPanel.Width = control.Width;
-                    //        break;
-                    //}
-                    //Height = Selectables.OfType<Control>().Sum(_ => _.Height);
+                    minWidth = Math.Max(minWidth, control.Width + control.Margin.Horizontal);
                 }
+                Width = minWidth;
+                foreach (var control in controls) control.Width = minWidth;
+                Height = controls.Sum(_=>_.Height + _.Margin.Vertical) + 1;
             }
-
             public int SelectedIndex
             {
                 get => _selectedIndex;
