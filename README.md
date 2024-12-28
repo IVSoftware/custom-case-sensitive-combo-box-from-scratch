@@ -1,137 +1,103 @@
-Consider that it might be easier to make your own control from scratch (i.e. _without_ even trying to inherit `ComboBox`) and make it behave exactly the way you want it to. One of the easier ways to make the list view is by using a borderless top-level form with a docked flow layout panel. Other than that, you need a text entry (a single-line `RichTextBox` works well for this) and a control for the drop down icon to toggle the visible state of the container.
-
-It is important to track the location of the drop down item container, for example if the parent form moves.
+﻿
+At first I tried subclassing a `ComboBox` to try and bend it to have the case sensitive qualities you describe, but similar to the reporting in the comments I found this particular behavior to be especially challenging even though I do this kind of thing a lot. In cases like this it's fairly straightforward to create a custom "combo box" from scratch, i.e. _without_ subclassing `ComboBox` or its `TextBox` and `ListBox` components.
 
 
 [![case-sensitive tracking][1]][1]
 
 ___
 
-**Container for drop list**
+**The Essentials**
 
+The general idea is that you just need the basic elements of text entry, a toggle for the visibility of a top-level borderless container (configured to display list items), and a dynamic means to track any movement of the custom control (or more likely, the parent form of the custom) so that the "list box" stays stuck to the main control.
 
-~~~
-class DropDownContainer : Form
-{
-    public DropDownContainer()
-    {
-        Visible = false;
-        BackColor = Color.White;
-        AutoSize = false;
-        FormBorderStyle = FormBorderStyle.None;
-        StartPosition = FormStartPosition.Manual;
-        Controls.Add(_flowLayoutPanel);
-        Selectables.ListChanged += OnSelectablesChanged;
-    }
-    protected virtual void OnSelectablesChanged(object? sender, ListChangedEventArgs e)
-    {
-        switch (e.ListChangedType)
-        {
-            case ListChangedType.Reset:
-                Controls.Clear();
-                break;
-            case ListChangedType.ItemAdded:
-                if (Selectables[e.NewIndex] is Control control)
-                {
-                    control.BackColor = Color.White;
-                    control.Margin = new Padding(0, 1, 0, 0);
-                    using (var graphics = control.CreateGraphics())
-                    {
-                        var sizeF = graphics.MeasureString(control.Text, control.Font);
-                        control.Width = Convert.ToInt32(sizeF.Width);
-                    }
-                    control.Anchor = AnchorStyles.Left | AnchorStyles.Right;
-                    switch (control.Width.CompareTo(_flowLayoutPanel.Width))
-                    {
-                        case -1:
-                            control.Width = _flowLayoutPanel.Width;
-                            break;
-                        case 1:
-                            _flowLayoutPanel.Width = control.Width;
-                            break;
-                    }
-                    control.Click += (sender, e) =>
-                    {
-                        switch (sender)
-                        {
-                            case Label label:
-                                ItemClicked?.Invoke(this, new ItemClickedEventArgs(label.Text));
-                                break;
-                            default:
-                                ItemClicked?.Invoke(this, new ItemClickedEventArgs(sender?.ToString()));
-                                break;
-                        }
-                    };
-                    _flowLayoutPanel.Controls.Add(control);
-                }
-                Height = Selectables.OfType<Control>().Sum(_ => _.Height);
-                break;
-        }
-    }
+- Using a single-line RichTextBox is a good way to get text entry without the "focus underline" artifact of TextBox. 
 
-    private readonly FlowLayoutPanel _flowLayoutPanel = new FlowLayoutPanel
-    {
-        Dock = DockStyle.Fill,
-        BackColor = Color.Coral,
-        FlowDirection = FlowDirection.LeftToRight,
-        Padding = new()
-    };
-    protected override void OnMinimumSizeChanged(EventArgs e)
-    {
-        base.OnMinimumSizeChanged(e);
-        _flowLayoutPanel.MinimumSize = MinimumSize;
-    }
-    internal BindingList<ISelectable> Selectables { get; } = new();
-    protected override void OnVisibleChanged(EventArgs e)
-    {
-        base.OnVisibleChanged(e);
-        if (Visible)
-        {
-            RefreshSelection();
-        }
-    }
-    private void RefreshSelection()
-    {
-        int index = 0;
-        foreach (var item in Selectables)
-        {
-            if (item is ISelectable selectable)
-            {
-                selectable.IsSelected = index == SelectedIndex;
-            }
-            index++;
-        }
-    }
-    public int SelectedIndex
-    {
-        get => _selectedIndex;
-        set
-        {
-            if (!Equals(_selectedIndex, value))
-            {
-                _selectedIndex = value;
-                RefreshSelection();
-            }
-        }
-    }
-    int _selectedIndex = -1;
+- Using something like a `TableLayoutPanel` to contain the text entry control and the drop down icon leaves open the possibility for extra functional icons. You could, for example, implement a dynamic add behavior, represented by a '+' symbol.
 
-    public event EventHandler<ItemClickedEventArgs>? ItemClicked;
-}
-~~~
+- The "drop down triangle" can be a label, with a simple unicode ▼ symbol as text, that toggles the visibility of a borderless, top-level form.
+
+- The location of the form, which can be used flexibly to display a list of items, is bound (in some respects) to the size of the main control, and to movements of the main control's containing form.
+
+- Using something like a `FlowLayoutPanel` docked (fill) to the form provides a flexible container for a variety of data templates. You could, for example, have items with check boxes, functional color schemes, or a dynamic delete behavior.
 
 ___
 
-**Object Wrapper for display in drop list**
+You can browse a [full example repo](https://github.com/IVSoftware/custom-case-sensitive-combo-box-from-scratch.git) and you can play around with it as a starting point for your project. See also: https://github.com/IVSoftware/custom-combo-box-from-scratch.git which demonstrates a version with dynamic features.
 
-In this implementation, basic types like {zebra, Zebra, ZEBRA} or {1, 2, 3} are wrapped in a `DefaultTemplate`, but it leaves room for expansion with any `ISelectable` control class.
+The TL;DR is that we're going to track text changes on the `RichTextBox` to search the view templates in the `_dropDownContainer_` and visually select the first case-sensitive match. Clicking on a line item:
+
+- Sets the `SelectedIndex` property
+- Copies the line item text to `richTexBox`
+- Closes the drop list.
 
 ~~~
+public class CaseSensitiveComboBox : Panel
+{
+    [DesignerSerializationVisibility(DesignerSerializationVisibility.Content)]
+    [Bindable(true)]
+    public BindingList<object> Items { get; } = new BindingList<object>();
+
+    public CaseSensitiveComboBox()
+    {
+        var tableLayoutPanel = new TableLayoutPanel
+        {
+            Dock = DockStyle.Fill,
+            ColumnCount = 2,
+        };
+        tableLayoutPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, Width = 80));
+        tableLayoutPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, Width = 20));
+        Controls.Add(tableLayoutPanel);
+        _richTextBox.TextChanged += (sender, e) =>
+        {
+            Text = _richTextBox.Text;
+            if (_richTextBox.IsPlaceholderText)
+            {
+                _dropDownContainer.SelectedIndex = -1;
+            }
+            else
+            {
+                var aspirant =
+                    _dropDownContainer.Selectables
+                    .OfType<object>()
+                    .FirstOrDefault(_ =>
+                        (_?.ToString() ?? string.Empty)
+                        .IndexOf(Text) == 0, StringComparison.Ordinal)
+                    as ISelectable;
+                Debug.Write($"{aspirant}");
+                if (aspirant is null || string.IsNullOrWhiteSpace(Text))
+                {
+                    _dropDownContainer.SelectedIndex = -1;
+                }
+                else
+                {
+                    _dropDownContainer.SelectedIndex = _dropDownContainer.Selectables.IndexOf(aspirant);
+                    _caseSensitiveText = aspirant.ToString();
+                    Debug.WriteLine($" {_dropDownContainer.SelectedIndex}");
+                }
+            }
+        };
+        tableLayoutPanel.Controls.Add(_richTextBox, 0, 0);
+        tableLayoutPanel.Controls.Add(_dropDownIcon, 1, 0);
+        _dropDownIcon.MouseDown += (sender, e) =>
+            BeginInvoke(() => DroppedDown = !DroppedDown);
+        Items.ListChanged += OnItemsChanged;
+        _dropDownContainer.ItemClicked += OnItemClicked;
+    }
+    ...
+ ~~~
+
+ ___
+
+ **Displaying the List Items**
+
+ In this case, we made it so that basic types like strings like "zebra" or values like 1, 2, 3 will be wrapped in a selectable data template while providing a hook for more full-featured `ISelectable` implementations.
+
+~~~ 
 public interface ISelectable
 {
     bool IsSelected { get; set; }
+    public string Text { get; set; }
 }
-
 
 class DefaultView : Label, ISelectable
 {
@@ -152,71 +118,8 @@ class DefaultView : Label, ISelectable
     bool _isSelected = default;
 }
 ~~~
-___
 
-**Text entry**
 
-Changes in the text entry control are tracked and used to update the selection index of the internal list, which is maintained separately from the separate from the `SelectedIndex` property of the main control.
-
-~~~
-class RichTextBoxEx : RichTextBox
-{
-    public RichTextBoxEx()
-    {
-        Multiline = false;
-        Anchor = AnchorStyles.Left | AnchorStyles.Right;
-        BorderStyle = BorderStyle.None;
-        Text = PlaceholderText;
-        IsPlaceholderText = true;
-        LostFocus += Commit;
-        KeyDown += Commit;
-        BackColor = DesignMode ? Color.LightGray : Color.White;
-    }
-    private void Commit(object? sender, EventArgs e)
-    {
-        if(e is KeyEventArgs eKey)
-        {
-            if (eKey.KeyData == Keys.Enter)
-            {
-                eKey.SuppressKeyPress = true;
-            }
-            else
-            {
-                return;
-            }
-        }
-        if (string.IsNullOrWhiteSpace(Text))
-        {
-            Text = PlaceholderText;
-            IsPlaceholderText = true;
-        }
-        BeginInvoke(() => SelectAll());
-    }
-    protected override void OnFontChanged(EventArgs e)
-    {
-        base.OnFontChanged(e);
-        using (var graphics = CreateGraphics())
-        {
-            Height = Convert.ToInt16(graphics.MeasureString("AZ", Font).Height);
-        }
-    }
-    protected override void OnMouseDown(MouseEventArgs e)
-    {
-        base.OnMouseDown(e);
-        if(IsPlaceholderText)
-        {
-            Text = string.Empty;
-            IsPlaceholderText = false;
-        }
-    }
-    public bool IsPlaceholderText { get; private set; } = true;
-    public string PlaceholderText { get; set; } = "Select";
-}
-~~~
-
-___
-
-I'll put a full example repo in the comments so you can play around with it as a starting point for your project.
 
 
   [1]: https://i.sstatic.net/WzDhxzwX.png
