@@ -160,6 +160,7 @@ namespace custom_case_sensitive_combo_box_from_scratch
                         _dropDownContainer.Show(this);
                     }
                     else _dropDownContainer.Hide();
+                    _dropDownIcon.BackColor = value ? Color.PaleTurquoise : Color.Azure;
                 }
             }
         }
@@ -327,7 +328,6 @@ namespace custom_case_sensitive_combo_box_from_scratch
                     index++;
                 }
             }
-
             internal void UpdateMetrics(object? sender, EventArgs e)
             {
                 if(Control.IsHandleCreated)
@@ -378,5 +378,4 @@ namespace custom_case_sensitive_combo_box_from_scratch
             public string? StringExact { get; }
         }
     }
-
 }
