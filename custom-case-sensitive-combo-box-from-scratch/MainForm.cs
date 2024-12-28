@@ -16,8 +16,4 @@ namespace custom_case_sensitive_combo_box_from_scratch
             comboBox.Items.Add("ZEBRA");
         }
     }
-    public interface ISelectable
-    {
-        bool IsSelected { get; set; }
-    }
 }
